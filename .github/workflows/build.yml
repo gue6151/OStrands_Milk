@@ -1,0 +1,59 @@
+name: Build OStrands Milk (Skyrim AE)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up MSVC x64
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Get CommonLibSSE-NG
+        shell: pwsh
+        run: git clone --depth 1 https://github.com/CharmedBaryon/CommonLibSSE-NG.git extern/CommonLibSSE-NG
+
+      - name: Get SKSE Menu Framework header
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force extern/SKSEMenuFramework | Out-Null
+          Invoke-WebRequest https://raw.githubusercontent.com/QTR-Modding/SKSE-Menu-Framework-3-API/main/SKSEMenuFramework.h -OutFile extern/SKSEMenuFramework/SKSEMenuFramework.h
+
+      - name: Get SimpleIni
+        shell: pwsh
+        run: |
+          git clone --depth 1 https://github.com/brofield/simpleini.git _simpleini
+          if (-not (Test-Path _simpleini/SimpleIni.h)) { throw "SimpleIni.h not found" }
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -A x64 -DSIMPLEINI_INCLUDE_DIRS="${{ github.workspace }}/_simpleini"
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build --config Release --parallel
+
+      - name: Verify DLL
+        shell: pwsh
+        run: |
+          $dll = Get-ChildItem build -Recurse -Filter OStrands_Milk.dll | Select-Object -First 1
+          if (-not $dll) { throw "OStrands_Milk.dll was not produced" }
+          Write-Host "DLL found: $($dll.FullName)"
+
+      - name: Upload DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: OStrands-Milk-Skyrim-AE-1.6.1170
+          path: build/**/OStrands_Milk.dll
+          if-no-files-found: error
+          retention-days: 14
