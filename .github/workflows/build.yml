@@ -1,4 +1,3 @@
-
 name: Build OStrands Milk (Skyrim AE)
 
 on:
@@ -20,16 +19,19 @@ jobs:
         with:
           arch: x64
 
-      - name: Get CommonLibSSE-NG
+      - name: Get CommonLibSSE-NG (pinned compatible fork)
         shell: pwsh
         run: |
-          git clone --depth 1 https://github.com/CharmedBaryon/CommonLibSSE-NG.git extern/CommonLibSSE-NG
+          git clone --filter=blob:none --no-checkout https://github.com/alandtse/CommonLibSSE-NG.git extern/CommonLibSSE-NG
+          git -C extern/CommonLibSSE-NG fetch --depth 1 origin 5298302831d03a01b3b406f4b7b8128ee3bd7a44
+          git -C extern/CommonLibSSE-NG checkout --detach 5298302831d03a01b3b406f4b7b8128ee3bd7a44
 
       - name: Get SKSE Menu Framework header
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force extern/SKSEMenuFramework | Out-Null
           Invoke-WebRequest https://raw.githubusercontent.com/QTR-Modding/SKSE-Menu-Framework-3-API/main/SKSEMenuFramework.h -OutFile extern/SKSEMenuFramework/SKSEMenuFramework.h
+          if (-not (Test-Path extern/SKSEMenuFramework/SKSEMenuFramework.h)) { throw "SKSEMenuFramework.h not found" }
 
       - name: Get SimpleIni
         shell: pwsh
@@ -54,12 +56,17 @@ jobs:
       - name: Install dependencies
         shell: pwsh
         run: |
-          & "$env:VCPKG_ROOT\vcpkg.exe" install spdlog:x64-windows fmt:x64-windows
+          & "$env:VCPKG_ROOT\vcpkg.exe" install spdlog:x64-windows fmt:x64-windows directxtk:x64-windows
 
       - name: Configure
         shell: pwsh
         run: |
           cmake -S . -B build -A x64 `
+            -DENABLE_SKYRIM_SE=OFF `
+            -DENABLE_SKYRIM_AE=ON `
+            -DENABLE_SKYRIM_VR=OFF `
+            -DBUILD_TESTS=OFF `
+            -DCOMMONLIB_ENABLE_IPO=OFF `
             -DSIMPLEINI_INCLUDE_DIRS="${{ github.workspace }}/_simpleini" `
             -DRAPIDCSV_INCLUDE_DIRS="${{ github.workspace }}/rapidcsv/src" `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
