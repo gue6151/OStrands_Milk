@@ -23,6 +23,14 @@ jobs:
         shell: pwsh
         run: git clone --depth 1 https://github.com/CharmedBaryon/CommonLibSSE-NG.git extern/CommonLibSSE-NG
 
+      - name: Install vcpkg dependencies
+        shell: pwsh
+        run: |
+          $env:VCPKG_ROOT = "$env:RUNNER_TEMP\vcpkg"
+          git clone https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT
+          & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat" -disableMetrics
+          & "$env:VCPKG_ROOT\vcpkg.exe" install spdlog:x64-windows
+
       - name: Get SKSE Menu Framework header
         shell: pwsh
         run: |
@@ -37,7 +45,11 @@ jobs:
 
       - name: Configure
         shell: pwsh
-        run: cmake -S . -B build -A x64 -DSIMPLEINI_INCLUDE_DIRS="${{ github.workspace }}/_simpleini"
+        run: |
+          $env:VCPKG_ROOT = "$env:RUNNER_TEMP\vcpkg"
+          cmake -S . -B build -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DSIMPLEINI_INCLUDE_DIRS="${{ github.workspace }}/_simpleini"
 
       - name: Build
         shell: pwsh
