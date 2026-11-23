@@ -597,7 +597,7 @@ namespace OStrands::Lactation
 			}
 			std::scoped_lock guard(lock);
 			if (pending.size() < 64) {
-				pending.push_back({ actor->GetHandle(), *signal, Clock::now() });
+				pending.push_back({ const_cast<RE::Actor*>(actor)->GetHandle(), *signal, Clock::now() });
 			}
 		}
 
