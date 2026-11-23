@@ -1,3 +1,4 @@
+
 name: Build OStrands Milk (Skyrim AE)
 
 on:
@@ -21,15 +22,8 @@ jobs:
 
       - name: Get CommonLibSSE-NG
         shell: pwsh
-        run: git clone --depth 1 https://github.com/CharmedBaryon/CommonLibSSE-NG.git extern/CommonLibSSE-NG
-
-      - name: Install vcpkg dependencies
-        shell: pwsh
         run: |
-          $env:VCPKG_ROOT = "$env:RUNNER_TEMP\vcpkg"
-          git clone https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT
-          & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat" -disableMetrics
-          & "$env:VCPKG_ROOT\vcpkg.exe" install spdlog:x64-windows
+          git clone --depth 1 https://github.com/CharmedBaryon/CommonLibSSE-NG.git extern/CommonLibSSE-NG
 
       - name: Get SKSE Menu Framework header
         shell: pwsh
@@ -43,13 +37,32 @@ jobs:
           git clone --depth 1 https://github.com/brofield/simpleini.git _simpleini
           if (-not (Test-Path _simpleini/SimpleIni.h)) { throw "SimpleIni.h not found" }
 
-      - name: Configure
+      - name: Get rapidcsv
+        shell: pwsh
+        run: |
+          git clone --depth 1 https://github.com/d99kris/rapidcsv.git rapidcsv
+          if (-not (Test-Path rapidcsv/src/rapidcsv.h)) { throw "rapidcsv.h not found" }
+
+      - name: Set up vcpkg
         shell: pwsh
         run: |
           $env:VCPKG_ROOT = "$env:RUNNER_TEMP\vcpkg"
+          git clone https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT
+          & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat" -disableMetrics
+          Add-Content $env:GITHUB_ENV "VCPKG_ROOT=$env:VCPKG_ROOT"
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_ROOT\vcpkg.exe" install spdlog:x64-windows fmt:x64-windows
+
+      - name: Configure
+        shell: pwsh
+        run: |
           cmake -S . -B build -A x64 `
-            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
-            -DSIMPLEINI_INCLUDE_DIRS="${{ github.workspace }}/_simpleini"
+            -DSIMPLEINI_INCLUDE_DIRS="${{ github.workspace }}/_simpleini" `
+            -DRAPIDCSV_INCLUDE_DIRS="${{ github.workspace }}/rapidcsv/src" `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 
       - name: Build
         shell: pwsh
